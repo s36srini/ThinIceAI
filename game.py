@@ -42,7 +42,7 @@ model.compile(loss='mse', optimizer=rms, metrics=['accuracy'])
 #print(model.predict(state.reshape(1,64), batch_size=1))
 
 
-epochs = 100
+epochs = 5000
 gamma = 0.95 #since it may take several moves to goal, making gamma high
 epsilon = 1
 for i in range(epochs):
@@ -80,7 +80,7 @@ for i in range(epochs):
 
         y[0][action] = update #target output
         print("Game #: %s" % (i,))
-        history = model.fit(state.reshape(1,64), y, batch_size=1, nb_epoch=1, verbose=1)
+        model.fit(state.reshape(1,64), y, batch_size=1, nb_epoch=1, verbose=1)
         state = new_state
         print('Reward: %s' % (reward,))
         if (reward != 1 and reward != -1):

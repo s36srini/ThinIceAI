@@ -148,7 +148,7 @@ def getReward(state):
 
  
     if (player_loc == goal):
-        if(len(wall_list) == 13):
+        if(len(wall_list) == 14):
             return 10
         else:
             return 0
