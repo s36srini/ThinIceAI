@@ -54,6 +54,9 @@ class GUIApplication(tk.Frame):
         self.set_geometry()
         self.set_icon()
 
+        # Close program with esc
+        self.master.bind('<Escape>', self.close)
+
     def validate_defaults(self):
         # Assuming using default values, checks that they make sense
         # (width and height fit)
@@ -172,6 +175,9 @@ class GUIApplication(tk.Frame):
         for handler in self.logger.handlers:
             handler.close()
             self.logger.removeHandler(handler)
+
+    def close(self, event):
+        sys.exit()
 
 if __name__ == "__main__":
     # For testing purposes, should not be calling this script directly
