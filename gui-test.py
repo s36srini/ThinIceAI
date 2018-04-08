@@ -179,6 +179,14 @@ class GUIApplication(tk.Frame):
     def close(self, event):
         sys.exit()
 
+def update_state(app):
+    # Callback continuously adds to queue
+    state = initGridRand()
+    app.log_grid_info()
+    app.draw_grid(state)
+
+    app.after(2000, update_state, app) 
+
 if __name__ == "__main__":
     # For testing purposes, should not be calling this script directly
     app = GUIApplication()
@@ -187,4 +195,7 @@ if __name__ == "__main__":
     app.log_grid_info()
     app.draw_grid(state)
 
+    # Mainloop is blocking, so queue a callback here
+    app.after(2000, update_state, app) 
     app.mainloop()
+
