@@ -56,6 +56,8 @@ class GUIApplication(tk.Frame):
         self.grid()
         self.set_geometry()
         self.set_icon()
+        self.prev_grid = None
+        self.prev_state = None
 
         # Close program with esc
         self.master.bind('<Escape>', self.close)
@@ -87,6 +89,18 @@ class GUIApplication(tk.Frame):
         icon_img = ImageTk.PhotoImage(Image.open(icon_path))
         self.tk.call('wm', 'iconphoto', self.master._w, icon_img)
 
+    def clear_widgets(self):
+        for widget in self.winfo_children():
+            widget.destroy()
+        clear_prev_grid()
+        clear_prev_state()
+
+    def clear_prev_grid(self):
+        self.prev_grid = None
+
+    def clear_prev_state(self):
+        self.prev_state = None
+
     def draw_grid(self, state):
         # Verify type and dimensions of state
         if type(state) != np.ndarray:
@@ -96,7 +110,7 @@ class GUIApplication(tk.Frame):
         if len(state.shape) != 3:
             err_msg = "Expected 3 dimensions array, instead got " + str(len(state.shape)) + " dimensions"
             raise ValueError(err_msg)
-        
+
         # Log state
         if self.logger is not None:
             self.logger.debug("draw_grid()\n" + 
@@ -104,6 +118,14 @@ class GUIApplication(tk.Frame):
             self.logger.debug("state.shape      = " + str(state.shape))
             self.logger.debug("len(state.shape) = " + str(len(state.shape)))
             self.logger.debug("type(state)      = " + str(type(state)))
+
+        # Track prev widgets in curr_grid, assigned to self.prev_grid at end of func
+        curr_grid = [[None for _ in range(state.shape[0])] for _ in range(state.shape[1])]
+
+        # Redraw entire grid if not same dimensions
+        if self.prev_state is not None:
+            if self.prev_state.shape[0] != state.shape[0] or self.prev_state.shape[1] != state.shape[1]:
+                clear_widgets()
 
         # Draw grid
         for row in range(state.shape[0]):
@@ -114,6 +136,19 @@ class GUIApplication(tk.Frame):
 
                 # Select image for given position state
                 pos_state = state[row][col]
+
+                # If prev entries are initialized, check for change
+                if self.prev_grid is not None and self.prev_state is not None:
+                    prev_pos_state = self.prev_state[row][col]
+
+                    # Don't redraw if no change in position state
+                    if(np.array_equal(pos_state, prev_pos_state)):
+                        curr_grid[row][col] = self.prev_grid[row][col]
+                        continue
+                    else:
+                        widget = self.prev_grid[row][col]
+                        widget.destroy()
+                    
                 if np.array_equal(pos_state, EMPTY):
                     image_path = os.path.join(ASSET_DIR, "empty.jpg")
                 elif np.array_equal(pos_state, GOAL):
@@ -131,6 +166,7 @@ class GUIApplication(tk.Frame):
                 else:
                     err_msg = "Unexpected position state {}, at [{}][{}]".format(pos_state, row, col)
                     raise ValueError(err_msg)
+
                 # Validate image size
                 img = Image.open(image_path)
                 img_w, img_h = img.size
@@ -140,9 +176,13 @@ class GUIApplication(tk.Frame):
 
                 tk_image = ImageTk.PhotoImage(img)
 
-                panel = tk.Label(self, image = tk_image)
-                panel.image = tk_image
-                panel.grid(column = col, row = row)
+                curr_grid[row][col] = tk.Label(self, image = tk_image)
+                curr_grid[row][col].image = tk_image
+                curr_grid[row][col].grid(column = col, row = row)
+
+        # Store old state and grid, grid can be used to delete widgets, state to compare to for changes
+        self.prev_grid = curr_grid
+        self.prev_state = state
      
     def enable_logging(self):
         if self.logger is not None:
