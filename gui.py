@@ -180,7 +180,7 @@ class GUIApplication(tk.Frame):
         sys.exit()
 
 def update_state(app):
-    # Callback continuously adds to queue
+    # Callback for testing, continuously adds to queue
     state = initGridRand()
     app.log_grid_info()
     app.draw_grid(state)
@@ -188,7 +188,7 @@ def update_state(app):
     app.after(2000, update_state, app) 
 
 if __name__ == "__main__":
-    # For testing purposes, should not be calling this script directly
+    # For testing purposes, should not be calling script directly
     app = GUIApplication()
     
     state = initGridRand()
