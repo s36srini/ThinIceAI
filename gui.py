@@ -7,6 +7,7 @@ import sys
 import os
 import logging
 import numpy as np
+import _thread
 from PIL import Image, ImageTk
 
 # For testing
@@ -25,6 +26,8 @@ GOAL    =   np.array([1,0,0,0])
 PIT     =   np.array([0,1,0,0])
 WALL    =   np.array([0,0,1,0])
 PLAYER  =   np.array([0,0,0,1])
+WIN     =   np.array([1,0,0,1])
+LOSE    =   np.array([0,1,0,1])
 
 #=================================
 # Asset location 
@@ -87,10 +90,12 @@ class GUIApplication(tk.Frame):
     def draw_grid(self, state):
         # Verify type and dimensions of state
         if type(state) != np.ndarray:
-            raise TypeError("Expected np.ndarray, instead got " + str(type(state)) )
+            err_msg = "Expected np.ndarray, instead got " + str(type(state)) 
+            raise TypeError(err_msg)
 
         if len(state.shape) != 3:
-            raise ValueError("Expected 3 dimensions array, instead got " + str(len(state.shape)) + " dimensions")
+            err_msg = "Expected 3 dimensions array, instead got " + str(len(state.shape)) + " dimensions"
+            raise ValueError(err_msg)
         
         # Log state
         if self.logger is not None:
@@ -119,8 +124,13 @@ class GUIApplication(tk.Frame):
                     image_path = os.path.join(ASSET_DIR, "wall.jpg")
                 elif np.array_equal(pos_state, PLAYER):
                     image_path = os.path.join(ASSET_DIR, "player.jpg")
+                elif np.array_equal(pos_state, LOSE):
+                    image_path = os.path.join(ASSET_DIR, "lose.jpg")
+                elif np.array_equal(pos_state, WIN):
+                    image_path = os.path.join(ASSET_DIR, "win.jpg")
                 else:
-                    raise ValueError("Unexpected position state {}, at [{}][{}]".format(pos_state, row, col))
+                    err_msg = "Unexpected position state {}, at [{}][{}]".format(pos_state, row, col)
+                    raise ValueError(err_msg)
                 # Validate image size
                 img = Image.open(image_path)
                 img_w, img_h = img.size
@@ -177,15 +187,14 @@ class GUIApplication(tk.Frame):
             self.logger.removeHandler(handler)
 
     def close(self, event):
-        sys.exit()
+        self.quit()
 
-def update_state(app):
-    # Callback for testing, continuously adds to queue
-    state = initGridRand()
-    app.log_grid_info()
-    app.draw_grid(state)
+def update_state(app, iterations):
+    for i in range(0, iterations):
+        state = initGridRand()
+        app.log_grid_info()
+        app.draw_grid(state)
 
-    app.after(2000, update_state, app) 
 
 if __name__ == "__main__":
     # For testing purposes, should not be calling script directly
@@ -195,7 +204,5 @@ if __name__ == "__main__":
     app.log_grid_info()
     app.draw_grid(state)
 
-    # Mainloop is blocking, so queue a callback here
-    app.after(2000, update_state, app) 
+    _thread.start_new_thread(update_state, (app, 100))
     app.mainloop()
-
