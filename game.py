@@ -2,6 +2,8 @@ import thinice as ThinIce
 #from IPython.display import clear_output
 import random
 import numpy as np
+import _thread
+from gui import GUIApplication
 
 
 from keras.models import Sequential
@@ -24,72 +26,88 @@ from keras.optimizers import RMSprop
 # print(ThinIce.dispGrid(state))
 
 
-model = Sequential()
-model.add(Dense(164, input_shape=(64,), kernel_initializer="lecun_uniform"))
-model.add(Activation('relu'))
-#model.add(Dropout(0.2)) I'm not using dropout, but maybe you wanna give it a try?
+def main(app=None):
+    model = Sequential()
+    model.add(Dense(164, input_shape=(64,), kernel_initializer="lecun_uniform"))
+    model.add(Activation('relu'))
+    #model.add(Dropout(0.2)) I'm not using dropout, but maybe you wanna give it a try?
 
-model.add(Dense(150, kernel_initializer="lecun_uniform"))
-model.add(Activation('relu'))
-#model.add(Dropout(0.2))
+    model.add(Dense(150, kernel_initializer="lecun_uniform"))
+    model.add(Activation('relu'))
+    #model.add(Dropout(0.2))
 
-model.add(Dense(4, kernel_initializer="lecun_uniform"))
-model.add(Activation('linear')) #linear output so we can have range of real-valued outputs
+    model.add(Dense(4, kernel_initializer="lecun_uniform"))
+    model.add(Activation('linear')) #linear output so we can have range of real-valued outputs
 
-rms = RMSprop()
-model.compile(loss='mse', optimizer=rms, metrics=['accuracy'])
+    rms = RMSprop()
+    model.compile(loss='mse', optimizer=rms, metrics=['accuracy'])
 
-#print(model.predict(state.reshape(1,64), batch_size=1))
-
-
-epochs = 5000
-gamma = 0.95 #since it may take several moves to goal, making gamma high
-epsilon = 1
-for i in range(epochs):
-    
-    state = ThinIce.initGrid()
-    status = 1
-    #while game still in progress
-    while(status == 1):
-        #We are in state S
-        #Let's run our Q function on S to get Q values for all possible actions
-        qval = model.predict(state.reshape(1,64), batch_size=1, verbose=1,steps=None)
-        if (random.random() < epsilon): #choose random action
-            action = np.random.randint(0,4)
-        else: #choose best action from Q(s,a) values
-            action = (np.argmax(qval))
-        #Take action, observe new state S'
-        new_state = ThinIce.makeMove(state, action)
-        #Observe reward
-        if(new_state == state).all():
-            reward = -1
-        else:
-            reward = ThinIce.getReward(new_state)
+    #print(model.predict(state.reshape(1,64), batch_size=1))
 
 
-        #Get max_Q(S',a)
-        newQ = model.predict(new_state.reshape(1,64), batch_size=1, verbose=1, steps=None)
-        print(newQ)
-        maxQ = np.max(newQ)
-        y = np.zeros((1,4))
-        y[:] = qval[:]
-        if (reward == 1 or reward == -1): #non-terminal state
-            update = (reward + (gamma * maxQ))
-        else: #terminal state
-            update = reward
+    epochs = 5000
+    gamma = 0.95 #since it may take several moves to goal, making gamma high
+    epsilon = 1
+    for i in range(epochs):
+        
+        state = ThinIce.initGrid()
+        status = 1
+        #while game still in progress
+        while(status == 1):
+            #We are in state S
+            #Let's run our Q function on S to get Q values for all possible actions
+            qval = model.predict(state.reshape(1,64), batch_size=1, verbose=1,steps=None)
+            if (random.random() < epsilon): #choose random action
+                action = np.random.randint(0,4)
+            else: #choose best action from Q(s,a) values
+                action = (np.argmax(qval))
+            #Take action, observe new state S'
+            new_state = ThinIce.makeMove(state, action)
+            #Observe reward
+            if(new_state == state).all():
+                reward = -1
+            else:
+                reward = ThinIce.getReward(new_state)
 
-        y[0][action] = update #target output
-        print("Game #: %s" % (i,))
-        model.fit(state.reshape(1,64), y, batch_size=1, nb_epoch=1, verbose=1)
-        state = new_state
-        print('Reward: %s' % (reward,))
-        if (reward != 1 and reward != -1):
-            status = 0
-        print(ThinIce.dispGrid(state))
-        #clear_output(wait=True)
-    if epsilon > 0.1:
-        epsilon -= (1/epochs)
+
+            #Get max_Q(S',a)
+            newQ = model.predict(new_state.reshape(1,64), batch_size=1, verbose=1, steps=None)
+            print(newQ)
+            maxQ = np.max(newQ)
+            y = np.zeros((1,4))
+            y[:] = qval[:]
+            if (reward == 1 or reward == -1): #non-terminal state
+                update = (reward + (gamma * maxQ))
+            else: #terminal state
+                update = reward
+
+            y[0][action] = update #target output
+            print("Game #: %s" % (i,))
+            model.fit(state.reshape(1,64), y, batch_size=1, nb_epoch=1, verbose=1)
+            state = new_state
+            print('Reward: %s' % (reward,))
+            if (reward != 1 and reward != -1):
+                status = 0
+            print(ThinIce.dispGrid(state))
+            if app is not None:
+                app.draw_grid(state)
+
+            #clear_output(wait=True)
+        if epsilon > 0.1:
+            epsilon -= (1/epochs)
 
 
-# print(state) 
+    # print(state)
 
+if __name__ == "__main__":
+    # Start program flow here when running script directly
+
+    # To use without GUI just call main() directly with no app argument
+    #main()
+
+    app = GUIApplication()
+
+    # Mainloop is blocking, so start thread for background work
+    _thread.start_new_thread(main, (app, ))
+
+    app.mainloop()
